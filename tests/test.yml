@@ -1,15 +1,23 @@
 ---
-- hosts: all
+- hosts: localhost
+  remote_user: root
 
   vars:
-    firewall_allowed_tcp_ports:
+    - firewall_allowed_tcp_ports:
       - "9123"
-
-  pre_tasks:
-    - name: Update apt cache.
-      apt: update_cache=yes cache_valid_time=1200
-      when: ansible_os_family == 'Debian'
-      changed_when: false
-
+    - firewall_conditionally_allowed_ports: 
+      - sources: ['1.1.2.0/24',  '1.2.2.2']
+        ports: [11111, 11000]
+        protocol: "udp"
+      - ansible_hosts: "{{ groups['all'] }}"
+        ports: [22222]
+      - ansible_hosts: "{{ groups['aaa'] }}"
+        ports: [33333]
+      - ansible_hosts: "{{ groups['aaa'] + groups['bbb'] }}"
+        ports: [44444]
+        protocol: "udp"
+      - sources: [ '5.5.5.5' ]
+        ports: [55555]
+        protocol: "udp"
   roles:
-    - role_under_test
+    - ansible-role-firewall

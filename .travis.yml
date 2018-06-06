@@ -1,49 +1,109 @@
 ---
-services: docker
+sudo: required
+language: python
+python: "2.7"
 
 env:
-  - distro: centos7
-  - distro: centos6
-  - distro: ubuntu1604
-  - distro: ubuntu1404
-  - distro: debian8
+  - SITE=test.yml
+
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -y curl
+
+install:
+  # Install Ansible.
+  - pip install ansible
+
+  # Add ansible.cfg to pick up roles path.
+  - "{ echo '[defaults]'; echo 'roles_path = ../'; } >> ansible.cfg"
 
 script:
-  # Download test shim.
-  - wget -O ${PWD}/tests/test.sh https://gist.githubusercontent.com/geerlingguy/73ef1e5ee45d8694570f334be385e181/raw/
-  - chmod +x ${PWD}/tests/test.sh
+  # Check the role/playbook's syntax.
+  - "ansible-playbook -i tests/inventory tests/$SITE --syntax-check"
 
-  # Run tests.
-  - ${PWD}/tests/test.sh
+  # Run the role/playbook with ansible-playbook.
+  - "ansible-playbook -i tests/inventory tests/$SITE --connection=local --sudo"
 
-  # # Check if TCP port 9123 is open.
-  # - >
-  #   sudo iptables -L -n
-  #   | grep -q "ACCEPT.*dpt:9123"
-  #   && (echo 'Port 9123 is open - pass' && exit 0)
-  #   || (echo 'Port 9123 is not open - fail' && exit 1)
+  # Run the role/playbook again, checking to make sure it's idempotent.
+  - >
+    ansible-playbook -i tests/inventory tests/$SITE --connection=local --sudo
+    | grep -q 'changed=0.*failed=0'
+    && (echo 'Idempotence test: pass' && exit 0)
+    || (echo 'Idempotence test: fail' && exit 1)
 
-  # # Check running firewall has exit code 0
-  # - >
-  #   sudo service firewall status
-  #   && (echo 'Status of running firewall is 0 - pass' && exit 0)
-  #   || (echo 'Status of running firewall is not 0 - fail' && exit 1)
+  # Check running firewall has exit code 0
+  - >
+    sudo service firewall status
+    && (echo 'Status of running firewall is 0 - pass' && exit 0)
+    || (echo 'Status of running firewall is not 0 - fail' && exit 1)
 
-  # # Stop firewall
-  # - >
-  #   sudo service firewall stop
-  #   && (echo 'Stopping firewall - pass' && exit 0)
-  #   || (echo 'Stopping firewall - fail' && exit 1)
+  # Check if TCP port 9123 is open.
+  - >
+    sudo iptables -L -n
+    | grep -q "ACCEPT.*dpt:9123"
+    && (echo 'Port 9123 is open - pass' && exit 0)
+    || (echo 'Port 9123 is not open - fail' && exit 1)
 
-  # # Check stopped firewall has exit code 3
-  # - >
-  #   sudo service firewall status;
-  #   EXIT=$?;
-  #   if [ 3 -eq $EXIT ]; then
-  #     echo 'Status of stopped firewall is 3 - pass' && exit 0;
-  #   else
-  #     echo 'Status of stopped firewall is not 3 - fail' && exit 1;
-  #   fi
+  # Check if TCP port 11111 is open for 1.2.2.2.
+  - >
+    sudo iptables -L -n
+    | grep -q "ACCEPT.*1.2.2.2.*dpt:11111"
+    && (echo 'Port 11111 is open - pass' && exit 0)
+    || (echo 'Port 11111 is not open - fail' && exit 1)
+
+  # Check if TCP port 11000 is open for 1.2.2.2.
+  - >
+    sudo iptables -L -n
+    | grep -q "ACCEPT.*1.2.2.2.*dpt:11000"
+    && (echo 'Port 11000 is open - pass' && exit 0)
+    || (echo 'Port 11000 is not open - fail' && exit 1)
+
+  # Check if tcp port 22222 is open 
+  - >
+    sudo iptables -L -n
+    | grep -q "ACCEPT.*tcp dpt:22222"
+    && (echo 'Port 22222 is open - pass' && exit 0)
+    || (echo 'Port 22222 is not open - fail' && exit 1)
+
+
+  # Check if tcp port 33333 is open 
+  - >
+    sudo iptables -L -n
+    | grep -q "ACCEPT.*tcp dpt:33333"
+    && (echo 'Port 33333 is open - pass' && exit 0)
+    || (echo 'Port 33333 is not open - fail' && exit 1)
+
+  # Check if udp port 44444 is open 
+  - >
+    sudo iptables -L -n
+    | grep -q "ACCEPT.*udp dpt:44444"
+    && (echo 'Port 44444 is open - pass' && exit 0)
+    || (echo 'Port 44444 is not open - fail' && exit 1)
+
+
+  # Check if udp port 55555 is open for 5.5.5.5
+  - >
+    sudo iptables -L -n
+    | grep -q "ACCEPT.*5.5.5.5.*udp dpt:55555"
+    && (echo 'Port 55555 is open - pass' && exit 0)
+    || (echo 'Port 55555 is not open - fail' && exit 1)
+
+
+  # Stop firewall
+  - >
+    sudo service firewall stop
+    && (echo 'Stopping firewall - pass' && exit 0)
+    || (echo 'Stopping firewall - fail' && exit 1)
+
+  # Check stopped firewall has exit code 3
+  - >
+    sudo service firewall status;
+    EXIT=$?;
+    if [ 3 -eq $EXIT ]; then
+      echo 'Status of stopped firewall is 3 - pass' && exit 0;
+    else
+      echo 'Status of stopped firewall is not 3 - fail' && exit 1;
+    fi
 
 notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications/

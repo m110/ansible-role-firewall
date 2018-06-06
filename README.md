@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/geerlingguy/ansible-role-firewall.svg?branch=master)](https://travis-ci.org/geerlingguy/ansible-role-firewall)
 
-Installs an iptables-based firewall for Linux. Supports both IPv4 (`iptables`) and IPv6 (`ip6tables`).
+Installs a simple iptables-based firewall for RHEL/CentOS or Debian/Ubunty systems.
 
 This firewall aims for simplicity over complexity, and only opens a few specific ports for incoming traffic (configurable through Ansible variables). If you have a rudimentary knowledge of `iptables` and/or firewalls in general, this role should be a good starting point for a secure system firewall.
 
@@ -15,11 +15,6 @@ None.
 ## Role Variables
 
 Available variables are listed below, along with default values (see `defaults/main.yml`):
-
-    firewall_state: started
-    firewall_enabled_at_boot: true
-
-Controls the state of the firewall service; whether it should be running (`firewall_state`) and/or enabled on system boot (`firewall_enabled_at_boot`).
 
     firewall_allowed_tcp_ports:
       - "22"
@@ -37,28 +32,16 @@ A list of TCP or UDP ports (respectively) to open to incoming traffic.
 Forward `src` port to `dest` port, either TCP or UDP (respectively).
 
     firewall_additional_rules: []
-    firewall_ip6_additional_rules: []
 
-Any additional (custom) rules to be added to the firewall (in the same format you would add them via command line, e.g. `iptables [rule]`/`ip6tables [rule]`). A few examples of how this could be used:
-
-    # Allow only the IP 167.89.89.18 to access port 4949 (Munin).
-    firewall_additional_rules:
-      - "iptables -A INPUT -p tcp --dport 4949 -s 167.89.89.18 -j ACCEPT"
-    
-    # Allow only the IP 214.192.48.21 to access port 3306 (MySQL).
-    firewall_additional_rules:
-      - "iptables -A INPUT -p tcp --dport 3306 -s 214.192.48.21 -j ACCEPT"
-
-See [Iptables Essentials: Common Firewall Rules and Commands](https://www.digitalocean.com/community/tutorials/iptables-essentials-common-firewall-rules-and-commands) for more examples.
+Any additional (custom) rules to be added to the firewall (in the same format you would add them via command line, e.g. `iptables [rule]`).
 
     firewall_log_dropped_packets: true
 
 Whether to log dropped packets to syslog (messages will be prefixed with "Dropped by firewall: ").
 
-    firewall_disable_firewalld: false
-    firewall_disable_ufw: false
+    firewall_conditionally_allowed_ports: []
 
-Set to `true` to disable firewalld (installed by default on RHEL/CentOS) or ufw (installed by default on Ubuntu), respectively.
+Ports to be opened to particular hosts. Either a source as defined by iptables (network name, a hostname, a network IP address (with /mask), or a plain IP address) or a group of ansible hosts. Ansible hosts will be converted to IP addresses. If protocol is not specified, tcp will be used.
 
 ## Dependencies
 
@@ -78,7 +61,16 @@ None.
       - "22"
       - "25"
       - "80"
-
+    firewall_conditionally_allowed_ports: 
+      - sources: ['1.1.2.0/24',  '1.2.2.2']
+        ports: [11111, 11000]
+        protocol: "udp"
+      - ansible_hosts: "{{ groups['all'] }}"
+        ports: [22222]
+      - ansible_hosts: "{{ groups['aaa'] + groups['bbb'] }}"
+        ports: [44444]
+        protocol: "udp"
+        
 ## TODO
 
   - Make outgoing ports more configurable.
@@ -90,4 +82,4 @@ MIT / BSD
 
 ## Author Information
 
-This role was created in 2014 by [Jeff Geerling](https://www.jeffgeerling.com/), author of [Ansible for DevOps](https://www.ansiblefordevops.com/).
+This role was created in 2014 by [Jeff Geerling](http://jeffgeerling.com/), author of [Ansible for DevOps](http://ansiblefordevops.com/).
